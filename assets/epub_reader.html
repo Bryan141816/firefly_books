@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Vanilla EPUB Reader</title>
+    <style>
+      body {
+        font-family: sans-serif;
+      }
+      #reader {
+        padding: 20px;
+        overflow-y: auto;
+        scroll-behavior: smooth;
+      }
+      .chapter {
+        padding-bottom: 20px;
+        margin-bottom: 40px;
+        border-bottom: 1px dashed #ccc;
+        aspect-ratio: 2/3;
+      }
+      * {
+        font-size: 1rem;
+        background-color: transparent;
+      }
+    </style>
+  </head>
+  <body>
+    <!--     <input type="file" id="epubInput" accept=".epub" /> -->
+    <div id="reader"></div>
+
+    <script>
+      /* --------------------------------------------------
+         GLOBAL STATE
+      -------------------------------------------------- */
+      let zip;
+      let chapters = [];
+      let cssFiles = [];
+      let chapterIds = [];
+      let chapterElements = [];
+      let bookLoaded = false;
+      let startingScroll = 0;
+
+      /* --------------------------------------------------
+         HELPERS
+      -------------------------------------------------- */
+      function parseXml(xmlStr) {
+        return new DOMParser().parseFromString(xmlStr, "application/xml");
+      }
+
+      function joinPaths(base, relative) {
+        const stack = base.split("/");
+        const parts = relative.split("/");
+        if (stack[stack.length - 1].includes(".")) stack.pop();
+
+        for (let part of parts) {
+          if (part === "..") stack.pop();
+          else if (part !== ".") stack.push(part);
+        }
+        return stack.join("/");
+      }
+
+      function parseHref(rawHref) {
+        if (!rawHref) return null;
+        if (rawHref.includes("#")) return rawHref.split("#")[1];
+        return rawHref
+          .split("/")
+          .pop()
+          .replace(/\.[^/.]+$/, "");
+      }
+
+      /* --------------------------------------------------
+         IMAGE HANDLING
+      -------------------------------------------------- */
+      async function convertImages(html, chapterPath = "", basePath = "") {
+        const doc = new DOMParser().parseFromString(html, "text/html");
+        const imgs = doc.querySelectorAll("img");
+
+        for (let img of imgs) {
+          const src = img.getAttribute("src");
+          if (!src) continue;
+
+          let filePath = joinPaths(chapterPath, src);
+          let file = zip.file(filePath);
+
+          if (!file) {
+            filePath = joinPaths(basePath, src);
+            file = zip.file(filePath);
+          }
+
+          if (file) {
+            const data = await file.async("base64");
+            const ext = src.split(".").pop().toLowerCase();
+            img.src = `data:image/${ext};base64,${data}`;
+          }
+        }
+        return doc.body.innerHTML;
+      }
+
+      /* --------------------------------------------------
+         CSS
+      -------------------------------------------------- */
+      async function injectCss(basePath = "") {
+        for (let href of cssFiles) {
+          const file = zip.file(basePath + href);
+          if (!file) continue;
+
+          const css = await file.async("text");
+          const style = document.createElement("style");
+          style.textContent = css;
+          document.head.appendChild(style);
+        }
+      }
+
+      /* --------------------------------------------------
+         CHAPTER TRACKING
+      -------------------------------------------------- */
+
+      function setCurrentChapter(el) {
+        history.replaceState(null, "", `#${el.id}`);
+      }
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) setCurrentChapter(entry.target);
+          });
+        },
+        { threshold: 0.5 }, // easier to trigger
+      );
+
+      function detectInitialChapter() {
+        let best = null;
+        let maxVisible = 0;
+
+        chapterElements.forEach((el) => {
+          const r = el.getBoundingClientRect();
+          const visible =
+            Math.min(r.bottom, window.innerHeight) - Math.max(r.top, 0);
+
+          if (visible > maxVisible) {
+            maxVisible = visible;
+            best = el;
+          }
+        });
+
+        if (best) setCurrentChapter(best);
+      }
+
+      /* --------------------------------------------------
+         RENDER
+      -------------------------------------------------- */
+      async function displayAllChapters() {
+        const reader = document.getElementById("reader");
+        reader.innerHTML = "";
+
+        // Create and append all chapter elements first
+        const fragment = document.createDocumentFragment();
+        chapters.forEach((html, i) => {
+          const div = document.createElement("div");
+          div.className = "chapter";
+          div.id = chapterIds[i];
+          div.innerHTML = html;
+          fragment.appendChild(div);
+        });
+        reader.appendChild(fragment);
+
+        // Now get references
+        bookLoaded = true;
+        FileLoaded.postMessage("File has been loaded");
+        setTimeout(() => {
+          chapterElements = Array.from(document.querySelectorAll(".chapter"));
+          chapterElements.forEach((el) => observer.observe(el));
+          window.scrollTo({ top: startingScroll });
+          detectInitialChapter();
+        }, 0);
+      }
+
+      /* --------------------------------------------------
+         EPUB CORE LOGIC
+      -------------------------------------------------- */
+      async function processEpub() {
+        const containerXml = await zip
+          .file("META-INF/container.xml")
+          .async("text");
+
+        const containerDoc = parseXml(containerXml);
+        const rootfilePath = containerDoc
+          .querySelector("rootfile")
+          .getAttribute("full-path");
+
+        const opfText = await zip.file(rootfilePath).async("text");
+        const opfDoc = parseXml(opfText);
+
+        const basePath = rootfilePath.substring(
+          0,
+          rootfilePath.lastIndexOf("/") + 1,
+        );
+
+        const manifest = {};
+        cssFiles = [];
+        chapterIds = [];
+
+        opfDoc.querySelectorAll("manifest > item").forEach((item) => {
+          const id = item.getAttribute("id");
+          const href = item.getAttribute("href");
+          const mediaType = item.getAttribute("media-type");
+
+          manifest[id] = { href, mediaType };
+          if (mediaType === "text/css") cssFiles.push(href);
+        });
+
+        const spine = [];
+        opfDoc.querySelectorAll("spine > itemref").forEach((itemref) => {
+          const href = manifest[itemref.getAttribute("idref")].href;
+          spine.push(href);
+
+          const name = href
+            .split("/")
+            .pop()
+            .replace(/\.[^/.]+$/, "");
+          chapterIds.push(name.replace(/[^a-zA-Z0-9_-]/g, "_"));
+        });
+
+        await injectCss(basePath);
+
+        chapters = await Promise.all(
+          spine.map(async (href) => {
+            const text = await zip.file(basePath + href).async("text");
+            const folder =
+              basePath + href.substring(0, href.lastIndexOf("/") + 1);
+            return convertImages(text, folder, basePath);
+          }),
+        );
+
+        displayAllChapters();
+      }
+
+      /* --------------------------------------------------
+         FLUTTER ENTRY POINT
+      -------------------------------------------------- */
+      window.loadEpubFromBase64 = async function (base64, scrollPosition) {
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+
+        zip = await JSZip.loadAsync(bytes);
+
+        startingScroll = parseFloat(scrollPosition);
+        await processEpub();
+      };
+
+      /* --------------------------------------------------
+         LINK HANDLING
+      -------------------------------------------------- */
+      document.addEventListener("click", (e) => {
+        if (!bookLoaded) return;
+
+        const a = e.target.closest("a");
+        if (!a) return;
+
+        const id = parseHref(a.getAttribute("href"));
+        if (!id) return;
+
+        const target = document.getElementById(id);
+        if (!target) return;
+
+        e.preventDefault();
+        history.pushState(null, "", `#${id}`);
+        target.scrollIntoView({ behavior: "smooth" });
+      });
+
+      function goToPage(pageId) {
+        const target = document.getElementById(pageId);
+        target.scrollIntoView();
+      }
+
+      function debounce(func, delay) {
+        let timeoutId;
+        return function (...args) {
+          if (timeoutId) clearTimeout(timeoutId);
+          timeoutId = setTimeout(() => {
+            func.apply(this, args);
+          }, delay);
+        };
+      }
+
+      function handleScroll() {
+        const scrollTop =
+          document.documentElement.scrollTop || document.body.scrollTop;
+        const scrollHeight =
+          document.documentElement.scrollHeight || document.body.scrollHeight;
+        const clientHeight =
+          document.documentElement.clientHeight || window.innerHeight;
+        const scrollRatio = scrollTop / (scrollHeight - clientHeight);
+
+        // Send to Flutter
+        ReaderScrolled.postMessage(scrollTop); // or scrollRatio
+      }
+
+      // Wrap it in debounce with 200ms delay
+      const debouncedScroll = debounce(handleScroll, 500);
+
+      // Add the listener
+      window.addEventListener("scroll", debouncedScroll);
+    </script>
+  </body>
+</html>
