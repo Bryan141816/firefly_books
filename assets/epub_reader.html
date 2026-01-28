@@ -6,6 +6,10 @@
     <style>
       body {
         font-family: sans-serif;
+        color: black;
+      }
+      body.dark {
+        color: white;
       }
       #reader {
         padding: 20px;
@@ -20,7 +24,7 @@
       }
       * {
         font-size: 1rem;
-        background-color: transparent;
+        background: transparent;
       }
     </style>
   </head>
@@ -39,7 +43,7 @@
       let chapterElements = [];
       let bookLoaded = false;
       let startingScroll = 0;
-
+      let isDarkMode = false;
       /* --------------------------------------------------
          HELPERS
       -------------------------------------------------- */
@@ -166,6 +170,10 @@
         // Now get references
         bookLoaded = true;
         FileLoaded.postMessage("File has been loaded");
+        console.log(isDarkMode);
+        if (isDarkMode) {
+          document.body.classList.add("dark");
+        }
         setTimeout(() => {
           chapterElements = Array.from(document.querySelectorAll(".chapter"));
           chapterElements.forEach((el) => observer.observe(el));
@@ -237,16 +245,21 @@
       /* --------------------------------------------------
          FLUTTER ENTRY POINT
       -------------------------------------------------- */
-      window.loadEpubFromBase64 = async function (base64, scrollPosition) {
+      window.loadEpubFromBase64 = async function (
+        base64,
+        scrollPosition,
+        appTheme,
+      ) {
         const binary = atob(base64);
         const bytes = new Uint8Array(binary.length);
 
         for (let i = 0; i < binary.length; i++) {
           bytes[i] = binary.charCodeAt(i);
         }
-
+        if (appTheme == "dark") {
+          isDarkMode = true;
+        }
         zip = await JSZip.loadAsync(bytes);
-
         startingScroll = parseFloat(scrollPosition);
         await processEpub();
       };

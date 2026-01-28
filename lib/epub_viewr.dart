@@ -30,6 +30,7 @@ class _EpubWebViewPageState extends State<EpubWebViewPage> {
     super.initState();
 
     _controller = WebViewController()
+      ..setBackgroundColor(Colors.transparent)
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..addJavaScriptChannel(
         'ReaderScrolled',
@@ -70,10 +71,14 @@ class _EpubWebViewPageState extends State<EpubWebViewPage> {
       }
     }
 
+    var brightness =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness;
+
+    String appTheme = brightness == Brightness.dark ? "dark" : "light";
     // Delay a little to make sure JS is ready
     Future.delayed(const Duration(milliseconds: 200), () {
       _controller.runJavaScript(
-        "loadEpubFromBase64(${jsonEncode(widget.base64Epub)}, $scrollPosition);",
+        "loadEpubFromBase64(${jsonEncode(widget.base64Epub)}, $scrollPosition, ${jsonEncode(appTheme)});",
       );
     });
   }
