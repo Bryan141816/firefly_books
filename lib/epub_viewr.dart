@@ -76,7 +76,7 @@ class _EpubWebViewPageState extends State<EpubWebViewPage> {
 
     String appTheme = brightness == Brightness.dark ? "dark" : "light";
     // Delay a little to make sure JS is ready
-    Future.delayed(const Duration(milliseconds: 200), () {
+    Future.delayed(const Duration(milliseconds: 500), () {
       _controller.runJavaScript(
         "loadEpubFromBase64(${jsonEncode(widget.base64Epub)}, $scrollPosition, ${jsonEncode(appTheme)});",
       );

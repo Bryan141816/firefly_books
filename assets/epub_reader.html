@@ -25,6 +25,7 @@
       * {
         font-size: 1rem;
         background: transparent;
+        line-height: 1.6;
       }
     </style>
   </head>
@@ -170,7 +171,6 @@
         // Now get references
         bookLoaded = true;
         FileLoaded.postMessage("File has been loaded");
-        console.log(isDarkMode);
         if (isDarkMode) {
           document.body.classList.add("dark");
         }
