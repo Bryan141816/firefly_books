@@ -146,7 +146,6 @@ class _BookListState extends State<BookList> {
   }
 
   Future<void> _loadFilesInFolder(String path) async {
-    print(path);
     final directory = Directory(path);
     final files = directory.listSync();
     List<FileSystemEntity> epubFiles = files
@@ -168,7 +167,6 @@ class _BookListState extends State<BookList> {
             int id = await dbHelper.insertBook(book.meta.title!);
             book.meta.id = id;
           }
-          print("Book id: ${book.meta.id}");
         }
 
         books.add(book);
@@ -214,11 +212,15 @@ class _BookListState extends State<BookList> {
                       onTap: () {
                         final base64File = book.filebase64;
                         final id = book.meta.id;
+                        final title = book.meta.title ?? "No titile";
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) =>
-                                EpubWebViewPage(id: id, base64Epub: base64File),
+                            builder: (context) => EpubWebViewPage(
+                              id: id,
+                              base64Epub: base64File,
+                              title: title,
+                            ),
                           ),
                         );
                       },
