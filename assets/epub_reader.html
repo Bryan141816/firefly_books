@@ -69,6 +69,7 @@
     let bookLoaded = false;
     let startingScroll = 0;
     let isDarkMode = false;
+    
     /* --------------------------------------------------
        HELPERS
     -------------------------------------------------- */
@@ -96,6 +97,29 @@
         .pop()
         .replace(/\.[^/.]+$/, "");
     }
+
+    async function waitForLayoutStability(root = document) {
+  // Wait for fonts (if any)
+  if (document.fonts?.ready) await document.fonts.ready;
+
+  // Wait for images to decode
+  const imgs = Array.from(root.querySelectorAll("img"));
+  await Promise.all(
+    imgs.map(async (img) => {
+      try {
+        if (!img.complete) await new Promise((res, rej) => {
+          img.addEventListener("load", res, { once: true });
+          img.addEventListener("error", res, { once: true }); // don't block forever
+        });
+        if (img.decode) await img.decode().catch(() => {});
+      } catch {}
+    })
+  );
+
+  // Let layout/paint settle
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+
 
     /* --------------------------------------------------
        IMAGE HANDLING
@@ -248,10 +272,6 @@
        CHAPTER TRACKING
     -------------------------------------------------- */
 
-    // function setCurrentChapter(el) {
-    //   history.replaceState(null, "", `#${el.id}`);
-    //   console.log(el.id)
-    // }
     let intersectDebounce = null;
 
     const observer = new IntersectionObserver(
@@ -279,26 +299,6 @@
       { threshold: 0.25 },
     );
 
-
-
-    // function detectInitialChapter() {
-    //   let best = null;
-    //   let maxVisible = 0;
-
-    //   chapterElements.forEach((el) => {
-    //     const top = el.offsetTop;
-    //     const bottom = top + el.offsetHeight;
-    //     const visible =
-    //       Math.min(bottom, window.innerHeight) - Math.max(top, 0);
-
-    //     if (visible > maxVisible) {
-    //       maxVisible = visible;
-    //       best = el;
-    //     }
-    //   });
-
-    //   if (best) setCurrentChapter(best);
-    // }
     function refreshChapterIndex() {
       chapterElements = Array.from(document.querySelectorAll(".chapter"));
       computedChapterIds = chapterElements.map(el => el.id);
@@ -522,27 +522,28 @@
 
 
 
-      setTimeout(() => {
-        const startY = window.scrollY + winHeight; // your "starting height"
+      (async () => {
+        await waitForLayoutStability(document.getElementById("reader"));
 
         document.querySelectorAll(".chapter").forEach(chapter => {
-          if (chapter.offsetHeight <= winHeight) return;
-          splitChapterIntoViewportSlices(chapter, winHeight);
+          if (chapter.offsetHeight > window.innerHeight) {
+            splitChapterIntoViewportSlices(chapter, window.innerHeight);
+          }
         });
+
         refreshChapterIndex();
         chapterElements.forEach((el, index) => {
           el.dataset.index = index;
           observer.observe(el);
         });
-        window.scrollTo({ top: startingScroll });
-        console.log(startingScroll)
+
         bookLoaded = true;
-        FileLoaded.postMessage((chapterIds.length).toString());
-        if (isDarkMode) {
-          document.body.classList.add("dark");
-        }
+        FileLoaded.postMessage(chapterIds.length.toString());
+        if (isDarkMode) document.body.classList.add("dark");
+        window.scrollTo({ top: startingScroll });
         emitCurrentIndex();
-      }, 0);
+      })();
+
     }
 
 
@@ -704,22 +705,24 @@
     }
 
     function handleScroll() {
-      const scrollTop =
-        document.documentElement.scrollTop || document.body.scrollTop;
-      const scrollHeight =
-        document.documentElement.scrollHeight || document.body.scrollHeight;
-      const clientHeight =
-        document.documentElement.clientHeight || window.innerHeight;
-      const scrollRatio = scrollTop / (scrollHeight - clientHeight);
+      if(bookLoaded){
 
-      // Send to Flutter
-      ReaderScrolled.postMessage(scrollTop); // or scrollRatio
+        const scrollTop =
+          document.documentElement.scrollTop || document.body.scrollTop;
+        const scrollHeight =
+          document.documentElement.scrollHeight || document.body.scrollHeight;
+        const clientHeight =
+          document.documentElement.clientHeight || window.innerHeight;
+        const scrollRatio = scrollTop / (scrollHeight - clientHeight);
+  
+        // Send to Flutter
+        ReaderScrolled.postMessage(scrollTop); // or scrollRatio
+      }
     }
 
-    // Wrap it in debounce with 200ms delay
     const debouncedScroll = debounce(handleScroll, 500);
 
-    // Add the listener
+
     window.addEventListener("scroll", debouncedScroll);
 
   </script>

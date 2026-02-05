@@ -6,7 +6,7 @@ import 'package:archive/archive.dart';
 import 'package:xml/xml.dart';
 import 'package:collection/collection.dart';
 import '../dbHandler.dart';
-import '../epub_viewr.dart';
+import '../epub_viewer.dart';
 
 class EpubMeta {
   int? id;

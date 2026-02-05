@@ -99,6 +99,7 @@ class _EpubWebViewPageState extends State<EpubWebViewPage> {
       var bookData = await dbHandler.getBookById(id);
       if (bookData != null) {
         scrollPosition = bookData['scroll_location'];
+        print(' $scrollPosition');
       }
     }
 
