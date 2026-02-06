@@ -29,6 +29,11 @@ class EpubParser {
         .firstWhereOrNull((_) => true)
         ?.innerText;
 
+    final description = document
+        .findAllElements('description', namespace: dcNs)
+        .firstWhereOrNull((_) => true)
+        ?.innerText;
+
     // ---- COVER IMAGE ----
     final coverItem = document
         .findAllElements('item')
@@ -41,6 +46,7 @@ class EpubParser {
     return EpubMeta(
       title: title,
       author: author,
+      description: description,
       coverImageHref: coverImageHref,
     );
   }
@@ -100,9 +106,7 @@ class EpubParser {
       }
     }
 
-    final String base64Str = base64Encode(bytes);
-
-    return EpubBook(meta: meta, images: coverImageBytes, filebase64: base64Str);
+    return EpubBook(meta: meta, images: coverImageBytes, epubFile: bytes);
   }
 
   Future<EpubBook> readEpubCompute(String filepath) async {
@@ -123,9 +127,13 @@ class EpubParser {
           var bookRecord = await dbHelper.getBookByName(book.meta.title!);
           if (bookRecord != null) {
             book.meta.id = bookRecord['id'];
+            book.meta.isFavorite = bookRecord['is_favorite'] == 1
+                ? true
+                : false;
           } else {
             int id = await dbHelper.insertBook(book.meta.title!);
             book.meta.id = id;
+            book.meta.isFavorite = false;
           }
         }
 

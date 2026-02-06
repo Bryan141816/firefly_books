@@ -24,12 +24,12 @@ class DatabaseHelper {
   }
 
   Future<void> _onCreate(Database db, int version) async {
-    // Create the 'library' table
     await db.execute('''
     CREATE TABLE library(
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       book_name TEXT,
-      scroll_location REAL
+      scroll_location REAL,
+      is_favorite INTEGER NOT NULL DEFAULT 0
     )
   ''');
   }
@@ -79,6 +79,19 @@ class DatabaseHelper {
       where: 'id =?',
       whereArgs: [id],
     );
+    return result > 0;
+  }
+
+  Future<bool> toggleIsFavorite(int id, bool state) async {
+    final db = await database;
+
+    final result = await db.update(
+      'library',
+      {'is_favorite': state ? 1 : 0}, // ✅ convert to int
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+
     return result > 0;
   }
 }

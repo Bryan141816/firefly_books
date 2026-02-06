@@ -1,5 +1,5 @@
 import 'package:firefly_books/core/models/book.dart';
-import 'package:firefly_books/features/pages/epub_viewer.dart';
+import 'package:firefly_books/features/pages/book_detailed_view.dart';
 import 'package:firefly_books/presentation/bookcard/book_card.dart';
 import 'package:flutter/material.dart';
 
@@ -33,20 +33,17 @@ class _BookGridState extends State<BookGrid> {
             ),
             itemBuilder: (context, index) {
               final book = _books[index];
-              final id = book.meta.id;
-              final title = book.meta.title ?? "No titile";
+              final bookMeta = book.meta;
+              final title = bookMeta.title ?? "No title";
               final image = book.images!;
               return GestureDetector(
                 onTap: () {
-                  final base64File = book.filebase64;
+                  final epubFile = book.epubFile;
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => EpubWebViewPage(
-                        id: id,
-                        base64Epub: base64File,
-                        title: title,
-                      ),
+                      builder: (context) =>
+                          BookDetailedView(book: book, epubFile: epubFile),
                     ),
                   );
                 },

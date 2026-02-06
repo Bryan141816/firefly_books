@@ -4,6 +4,42 @@
 <head>
   <meta charset="UTF-8" />
   <title>Vanilla EPUB Reader</title>
+  <script>    function base64ToUint8Array(base64) {
+      const binStr = atob(base64);
+      const len = binStr.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) bytes[i] = binStr.charCodeAt(i) & 0xff;
+      return bytes;
+    }
+
+    window.loadEpubFromBase64 = async function (base64, scrollPosition, appTheme) {
+      const bytes = base64ToUint8Array(base64);
+
+      isDarkMode = (appTheme === "dark");
+      zip = await JSZip.loadAsync(bytes);
+
+      startingScroll = Number(scrollPosition) || 0;
+      await processEpub();
+    };
+
+    let _b64Chunks = [];
+
+    window.epubRxStart = function (scrollPosition, appTheme) {
+      _b64Chunks = [];
+      window._rxScrollPosition = scrollPosition;
+      window._rxTheme = appTheme;
+    };
+
+    window.epubRxChunk = function (chunk) {
+      _b64Chunks.push(chunk);
+    };
+
+    window.epubRxEnd = async function () {
+      const base64 = _b64Chunks.join('');
+      _b64Chunks = [];
+
+      await window.loadEpubFromBase64(base64, window._rxScrollPosition, window._rxTheme);
+    };</script>
   <style>
     body {
       font-family: sans-serif;
@@ -69,7 +105,16 @@
     let bookLoaded = false;
     let startingScroll = 0;
     let isDarkMode = false;
-    
+
+
+
+    /* --------------------------------------------------
+       FLUTTER ENTRY POINT
+    -------------------------------------------------- */
+
+
+
+
     /* --------------------------------------------------
        HELPERS
     -------------------------------------------------- */
@@ -99,26 +144,26 @@
     }
 
     async function waitForLayoutStability(root = document) {
-  // Wait for fonts (if any)
-  if (document.fonts?.ready) await document.fonts.ready;
+      // Wait for fonts (if any)
+      if (document.fonts?.ready) await document.fonts.ready;
 
-  // Wait for images to decode
-  const imgs = Array.from(root.querySelectorAll("img"));
-  await Promise.all(
-    imgs.map(async (img) => {
-      try {
-        if (!img.complete) await new Promise((res, rej) => {
-          img.addEventListener("load", res, { once: true });
-          img.addEventListener("error", res, { once: true }); // don't block forever
-        });
-        if (img.decode) await img.decode().catch(() => {});
-      } catch {}
-    })
-  );
+      // Wait for images to decode
+      const imgs = Array.from(root.querySelectorAll("img"));
+      await Promise.all(
+        imgs.map(async (img) => {
+          try {
+            if (!img.complete) await new Promise((res, rej) => {
+              img.addEventListener("load", res, { once: true });
+              img.addEventListener("error", res, { once: true }); // don't block forever
+            });
+            if (img.decode) await img.decode().catch(() => { });
+          } catch { }
+        })
+      );
 
-  // Let layout/paint settle
-  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-}
+      // Let layout/paint settle
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    }
 
 
     /* --------------------------------------------------
@@ -635,28 +680,6 @@
       displayAllChapters();
     }
 
-    /* --------------------------------------------------
-       FLUTTER ENTRY POINT
-    -------------------------------------------------- */
-    window.loadEpubFromBase64 = async function (
-      base64,
-      scrollPosition,
-      appTheme,
-    ) {
-      const binary = atob(base64);
-      const bytes = new Uint8Array(binary.length);
-
-      for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      if (appTheme == "dark") {
-        isDarkMode = true;
-      }
-      zip = await JSZip.loadAsync(bytes);
-      startingScroll = parseFloat(scrollPosition);
-      await processEpub();
-    };
-
     /*document
       .getElementById("epubInput")
       .addEventListener("change", async (e) => {
@@ -705,7 +728,7 @@
     }
 
     function handleScroll() {
-      if(bookLoaded){
+      if (bookLoaded) {
 
         const scrollTop =
           document.documentElement.scrollTop || document.body.scrollTop;
@@ -714,7 +737,7 @@
         const clientHeight =
           document.documentElement.clientHeight || window.innerHeight;
         const scrollRatio = scrollTop / (scrollHeight - clientHeight);
-  
+
         // Send to Flutter
         ReaderScrolled.postMessage(scrollTop); // or scrollRatio
       }

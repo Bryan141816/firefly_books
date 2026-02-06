@@ -6,7 +6,8 @@ import '../components/book_grid.dart';
 
 class BookList extends StatefulWidget {
   final String booksPath;
-  const BookList({super.key, required this.booksPath});
+  final bool Function(EpubBook book)? checker;
+  const BookList({super.key, required this.booksPath, this.checker});
 
   @override
   State<BookList> createState() => _BookListState();
@@ -18,9 +19,27 @@ class _BookListState extends State<BookList> {
 
   Future<void> _loadFiles() async {
     EpubFileHandler epubFileHandler = EpubFileHandler();
+    List<EpubBook>? book = epubFileHandler.getLoadedBooks();
+
+    book ??= await epubFileHandler.loadFilesInFolder(widget.booksPath);
+    final checker = widget.checker;
+    book = checker == null ? book : book.where((b) => checker(b)).toList();
+    if (!mounted) return;
+    setState(() {
+      if (book == null) return;
+      _books = book;
+    });
+  }
+
+  Future<void> _refreshFiles() async {
+    EpubFileHandler epubFileHandler = EpubFileHandler();
     List<EpubBook> book = await epubFileHandler.loadFilesInFolder(
       widget.booksPath,
     );
+    final checker = widget.checker;
+    book = checker == null ? book : book.where((b) => checker(b)).toList();
+
+    if (!mounted) return;
     setState(() {
       _books = book;
     });
@@ -34,15 +53,9 @@ class _BookListState extends State<BookList> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Library")),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: RefreshIndicator(
-          onRefresh: _loadFiles,
-          child: BookGrid(books: _books),
-        ),
-      ),
+    return RefreshIndicator(
+      onRefresh: _refreshFiles,
+      child: BookGrid(books: _books),
     );
   }
 }

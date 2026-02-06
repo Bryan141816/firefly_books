@@ -1,19 +1,19 @@
 import 'dart:async';
+import 'dart:typed_data';
 
+import 'package:firefly_books/core/models/book.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../core/data/local/db_handler.dart';
 import 'dart:convert';
 
 class EpubWebViewPage extends StatefulWidget {
-  final int? id;
-  final String base64Epub;
-  final String title;
+  final EpubMeta bookMeta;
+  final Uint8List epubFile;
   const EpubWebViewPage({
     super.key,
-    this.id,
-    required this.base64Epub,
-    required this.title,
+    required this.bookMeta,
+    required this.epubFile,
   });
 
   @override
@@ -30,10 +30,9 @@ class _EpubWebViewPageState extends State<EpubWebViewPage> {
   Timer? _sliderDebounce;
 
   void savePositionDB(double position) async {
-    final id = widget.id;
-    if (id != null) {
-      await dbHandler.updateBookScroll(id, position);
-    }
+    final id = widget.bookMeta.id;
+    if (id == null) return;
+    await dbHandler.updateBookScroll(id, position);
   }
 
   @override
@@ -92,13 +91,12 @@ class _EpubWebViewPageState extends State<EpubWebViewPage> {
 
     _controller.loadHtmlString(html);
 
-    int? id = widget.id;
+    int? id = widget.bookMeta.id;
     double scrollPosition = 0;
     if (id != null) {
       var bookData = await dbHandler.getBookById(id);
       if (bookData != null) {
         scrollPosition = bookData['scroll_location'];
-        print(' $scrollPosition');
       }
     }
 
@@ -107,23 +105,41 @@ class _EpubWebViewPageState extends State<EpubWebViewPage> {
 
     String appTheme = brightness == Brightness.dark ? "dark" : "light";
     // Delay a little to make sure JS is ready
-    Future.delayed(const Duration(milliseconds: 500), () {
-      _controller.runJavaScript(
-        "loadEpubFromBase64(${jsonEncode(widget.base64Epub)}, $scrollPosition, ${jsonEncode(appTheme)});",
+    await sendEpubBase64Chunked(
+      widget.epubFile,
+      _controller,
+      scrollPosition.toString(),
+      appTheme,
+    );
+  }
+
+  Future<void> sendEpubBase64Chunked(
+    Uint8List bytes,
+    dynamic controller,
+    String scrollPosition,
+    String appTheme, {
+    int chunkSize = 200000, // chars
+  }) async {
+    final b64 = base64Encode(bytes);
+
+    await controller.runJavaScript(
+      "window.epubRxStart(${jsonEncode(scrollPosition)}, ${jsonEncode(appTheme)});",
+    );
+
+    for (int i = 0; i < b64.length; i += chunkSize) {
+      final end = (i + chunkSize < b64.length) ? i + chunkSize : b64.length;
+      final chunk = b64.substring(i, end);
+      await controller.runJavaScript(
+        "window.epubRxChunk(${jsonEncode(chunk)});",
       );
-    });
+    }
+
+    await controller.runJavaScript("window.epubRxEnd();");
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final secondary = theme.colorScheme.secondary;
-
-    final darkerPrimary = HSLColor.fromColor(secondary)
-        .withLightness(
-          (HSLColor.fromColor(secondary).lightness - 0.67).clamp(0.0, 1.0),
-        )
-        .toColor();
+    final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
       body: SafeArea(
@@ -142,7 +158,7 @@ class _EpubWebViewPageState extends State<EpubWebViewPage> {
                 height: 48,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: darkerPrimary,
+                    color: colors.secondary,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -151,16 +167,16 @@ class _EpubWebViewPageState extends State<EpubWebViewPage> {
                       // Back button
                       IconButton(
                         icon: const Icon(Icons.arrow_back),
-                        color: Colors.white,
+                        color: colors.onSecondary,
                         onPressed: () => Navigator.of(context).pop(),
                       ),
 
                       // Title
                       Expanded(
                         child: Text(
-                          widget.title,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          widget.bookMeta.title ?? "Title",
+                          style: TextStyle(
+                            color: colors.onSecondary,
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
@@ -182,7 +198,7 @@ class _EpubWebViewPageState extends State<EpubWebViewPage> {
                     vertical: 10, // 👈 top & bottom padding
                   ),
                   decoration: BoxDecoration(
-                    color: darkerPrimary,
+                    color: colors.secondary,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Column(
@@ -193,16 +209,16 @@ class _EpubWebViewPageState extends State<EpubWebViewPage> {
                     children: [
                       Text(
                         '$_pageIndex/$maxPageCount',
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: colors.onSecondary),
                       ),
 
                       const SizedBox(height: 6),
 
                       Row(
                         children: [
-                          const Text(
+                          Text(
                             '1',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: colors.onSecondary),
                           ),
 
                           Expanded(
@@ -212,6 +228,8 @@ class _EpubWebViewPageState extends State<EpubWebViewPage> {
                                 thumbShape: const RoundSliderThumbShape(
                                   enabledThumbRadius: 8,
                                 ),
+                                thumbColor: colors.primary,
+
                                 overlayShape: const RoundSliderOverlayShape(
                                   overlayRadius: 14,
                                 ),
@@ -241,7 +259,7 @@ class _EpubWebViewPageState extends State<EpubWebViewPage> {
 
                           Text(
                             maxPageCount.toString(),
-                            style: const TextStyle(color: Colors.white),
+                            style: TextStyle(color: colors.onSecondary),
                           ),
                         ],
                       ),
@@ -250,7 +268,13 @@ class _EpubWebViewPageState extends State<EpubWebViewPage> {
                 ),
               ),
 
-            if (_isLoading) const Center(child: CircularProgressIndicator()),
+            if (_isLoading)
+              Container(
+                width: double.infinity,
+                height: double.infinity,
+                color: colors.surface,
+                child: const Center(child: CircularProgressIndicator()),
+              ),
           ],
         ),
       ),

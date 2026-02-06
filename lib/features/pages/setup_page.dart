@@ -1,3 +1,4 @@
+import 'package:firefly_books/app.dart';
 import 'package:firefly_books/core/data/local/shared_preferences_handle.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -62,7 +63,13 @@ class _SetupPageState extends State<SetupPage> {
     await PrefsService.instance.setBooksDirectory(_selectedFolder!);
     await PrefsService.instance.setSetupComplete(true);
 
-    Navigator.pushNamedAndRemoveUntil(context, "/", (route) => false);
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => App(),
+      ), // replace with your BookList widget
+      (route) => false,
+    );
   }
 
   @override
