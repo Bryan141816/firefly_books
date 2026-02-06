@@ -1,8 +1,8 @@
+import 'package:firefly_books/core/configurations/routes.dart';
+import 'package:firefly_books/core/data/local/shared_preferences_handle.dart';
+import 'package:firefly_books/core/theme/themes.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dbHandler.dart';
-import 'screens/book_list.dart';
-import 'screens/setup_screen.dart';
+import 'core/data/local/db_handler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -10,45 +10,23 @@ void main() async {
   // Initialize database
   DatabaseHelper dbHelper = DatabaseHelper();
   await dbHelper.database;
+  await PrefsService.instance.init();
 
-  // Check if setup is complete
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  bool setupComplete = prefs.getBool('setupComplete') ?? false;
-  String booksDirectory = prefs.getString('booksDirectory') ?? "";
-
-  runApp(MyApp(setupComplete: setupComplete, booksDirectory: booksDirectory));
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  final bool setupComplete;
-  final String booksDirectory;
-  const MyApp({
-    super.key,
-    required this.setupComplete,
-    required this.booksDirectory,
-  });
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final isSetupDone = PrefsService.instance.setupComplete;
     return MaterialApp(
-      title: 'Firefly Books',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue,
-          brightness: Brightness.light,
-        ),
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue,
-          brightness: Brightness.dark,
-        ),
-      ),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
-      // Show BookList if setupComplete, otherwise SetupScreen
-      home: setupComplete
-          ? BookList(booksPath: booksDirectory)
-          : const SetupScreen(),
+      onGenerateRoute: AppRoutes.generateRoute,
+      initialRoute: isSetupDone ? "/" : "/setup",
     );
   }
 }

@@ -1,9 +1,8 @@
-// lib/epub_webview_page.dart
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'dbHandler.dart';
+import '../../core/data/local/db_handler.dart';
 import 'dart:convert';
 
 class EpubWebViewPage extends StatefulWidget {

@@ -1,17 +1,16 @@
+import 'package:firefly_books/core/data/local/shared_preferences_handle.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'book_list.dart'; // replace with your actual BookList import
 
-class SetupScreen extends StatefulWidget {
-  const SetupScreen({super.key});
+class SetupPage extends StatefulWidget {
+  const SetupPage({super.key});
 
   @override
-  State<SetupScreen> createState() => _SetupScreenState();
+  State<SetupPage> createState() => _SetupPageState();
 }
 
-class _SetupScreenState extends State<SetupScreen> {
+class _SetupPageState extends State<SetupPage> {
   bool _storageGranted = false;
   String? _selectedFolder;
 
@@ -60,18 +59,10 @@ class _SetupScreenState extends State<SetupScreen> {
       return;
     }
 
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('setupComplete', true);
-    await prefs.setString('booksDirectory', _selectedFolder!);
+    await PrefsService.instance.setBooksDirectory(_selectedFolder!);
+    await PrefsService.instance.setSetupComplete(true);
 
-    // Redirect to BookList and remove all previous routes
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(
-        builder: (_) => BookList(booksPath: _selectedFolder ?? ""),
-      ), // replace with your BookList widget
-      (route) => false,
-    );
+    Navigator.pushNamedAndRemoveUntil(context, "/", (route) => false);
   }
 
   @override
