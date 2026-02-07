@@ -52,23 +52,22 @@ class FloatingBottomNavBar extends StatelessWidget {
               ),
               const SizedBox(width: 20),
 
+              // NavItem(
+              //   size: itemSize,
+              //   icon: currentIndex == 2
+              //       ? CupertinoIcons.time_solid
+              //       : CupertinoIcons.time,
+              //   selected: currentIndex == 2,
+              //   onTap: () => onChanged(2),
+              // ),
+              // const SizedBox(width: 20),
               NavItem(
                 size: itemSize,
                 icon: currentIndex == 2
-                    ? CupertinoIcons.time_solid
-                    : CupertinoIcons.time,
-                selected: currentIndex == 2,
-                onTap: () => onChanged(2),
-              ),
-              const SizedBox(width: 20),
-
-              NavItem(
-                size: itemSize,
-                icon: currentIndex == 3
                     ? CupertinoIcons.gear_solid
                     : CupertinoIcons.gear,
-                selected: currentIndex == 3,
-                onTap: () => onChanged(3),
+                selected: currentIndex == 2,
+                onTap: () => onChanged(2),
               ),
               const SizedBox(width: 12),
             ],

@@ -25,13 +25,20 @@ class DatabaseHelper {
 
   Future<void> _onCreate(Database db, int version) async {
     await db.execute('''
-    CREATE TABLE library(
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      book_name TEXT,
-      scroll_location REAL,
-      is_favorite INTEGER NOT NULL DEFAULT 0
-    )
-  ''');
+      CREATE TABLE library(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        book_name TEXT NOT NULL UNIQUE,
+        scroll_location REAL,
+        is_favorite INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE thumbnails(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        file_name TEXT,
+        saved_directory TEXT
+      )
+    ''');
   }
 
   Future<int> insertBook(String bookName, {double scrollLocation = 0.0}) async {

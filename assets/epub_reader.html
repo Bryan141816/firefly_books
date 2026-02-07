@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8" />
   <title>Vanilla EPUB Reader</title>
-  <script>    function base64ToUint8Array(base64) {
+  <script>
+    function base64ToUint8Array(base64) {
       const binStr = atob(base64);
       const len = binStr.length;
       const bytes = new Uint8Array(len);
@@ -12,13 +13,9 @@
       return bytes;
     }
 
-    window.loadEpubFromBase64 = async function (base64, scrollPosition, appTheme) {
+    window.loadEpubFromBase64 = async function (base64) {
       const bytes = base64ToUint8Array(base64);
-
-      isDarkMode = (appTheme === "dark");
       zip = await JSZip.loadAsync(bytes);
-
-      startingScroll = Number(scrollPosition) || 0;
       await processEpub();
     };
 
@@ -26,8 +23,8 @@
 
     window.epubRxStart = function (scrollPosition, appTheme) {
       _b64Chunks = [];
-      window._rxScrollPosition = scrollPosition;
-      window._rxTheme = appTheme;
+      isDarkMode = (appTheme === "dark");
+      startingScroll = Number(scrollPosition) || 0;
     };
 
     window.epubRxChunk = function (chunk) {
@@ -38,7 +35,7 @@
       const base64 = _b64Chunks.join('');
       _b64Chunks = [];
 
-      await window.loadEpubFromBase64(base64, window._rxScrollPosition, window._rxTheme);
+      await window.loadEpubFromBase64(base64);
     };</script>
   <style>
     body {
@@ -747,7 +744,7 @@
 
 
     window.addEventListener("scroll", debouncedScroll);
-
+    ReaderLoaded.postMessage("loaded");
   </script>
 </body>
 

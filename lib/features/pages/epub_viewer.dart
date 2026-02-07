@@ -1,20 +1,18 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:firefly_books/core/models/book.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../core/data/local/db_handler.dart';
 import 'dart:convert';
 
 class EpubWebViewPage extends StatefulWidget {
-  final EpubMeta bookMeta;
-  final Uint8List epubFile;
-  const EpubWebViewPage({
-    super.key,
-    required this.bookMeta,
-    required this.epubFile,
-  });
+  final EpubBook book;
+
+  const EpubWebViewPage({super.key, required this.book});
 
   @override
   State<EpubWebViewPage> createState() => _EpubWebViewPageState();
@@ -28,20 +26,60 @@ class _EpubWebViewPageState extends State<EpubWebViewPage> {
   bool _controlsVisible = false;
   int _pageIndex = 1;
   Timer? _sliderDebounce;
+  late Uint8List fileBytes;
 
   void savePositionDB(double position) async {
-    final id = widget.bookMeta.id;
+    final id = widget.book.meta.id;
     if (id == null) return;
     await dbHandler.updateBookScroll(id, position);
+  }
+
+  Future<void> _loadFilePath() async {
+    final String? epubPath = widget.book.epubPath;
+    if (epubPath == null) throw Exception("epubPath is null");
+    fileBytes = await File(epubPath).readAsBytes();
   }
 
   @override
   void initState() {
     super.initState();
+    () async {
+      await _loadFilePath();
+      await _loadHtml();
+    }();
 
     _controller = WebViewController()
       ..setBackgroundColor(Colors.transparent)
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..addJavaScriptChannel(
+        'ReaderLoaded',
+        onMessageReceived: (message) {
+          () async {
+            final id = widget.book.meta.id;
+            var scrollPosition = 0.0;
+            if (id != null) {
+              final bookData = await dbHandler.getBookById(id);
+              if (!mounted) return;
+              if (bookData != null) {
+                scrollPosition =
+                    (bookData['scroll_location'] as num?)?.toDouble() ?? 0.0;
+              }
+            }
+
+            final brightness =
+                WidgetsBinding.instance.platformDispatcher.platformBrightness;
+
+            final appTheme = brightness == Brightness.dark ? "dark" : "light";
+            if (!mounted) return;
+            await sendEpubBase64Chunked(
+              fileBytes,
+              _controller,
+              scrollPosition.toString(),
+              appTheme,
+            );
+          }();
+        },
+      )
       ..addJavaScriptChannel(
         'ReaderScrolled',
         onMessageReceived: (message) {
@@ -66,8 +104,6 @@ class _EpubWebViewPageState extends State<EpubWebViewPage> {
           });
         },
       );
-
-    _loadHtml();
   }
 
   void toggleControlsVisibility() {
@@ -81,36 +117,11 @@ class _EpubWebViewPageState extends State<EpubWebViewPage> {
   }
 
   Future<void> _loadHtml() async {
-    String jszip = await DefaultAssetBundle.of(
-      context,
-    ).loadString('assets/jszip.min.js');
-    String html = await DefaultAssetBundle.of(
-      context,
-    ).loadString('assets/epub_reader.html');
+    final jszip = await rootBundle.loadString('assets/jszip.min.js');
+    var html = await rootBundle.loadString('assets/epub_reader.html');
     html = html.replaceFirst('<head>', '<head><script>$jszip</script>');
 
     _controller.loadHtmlString(html);
-
-    int? id = widget.bookMeta.id;
-    double scrollPosition = 0;
-    if (id != null) {
-      var bookData = await dbHandler.getBookById(id);
-      if (bookData != null) {
-        scrollPosition = bookData['scroll_location'];
-      }
-    }
-
-    var brightness =
-        WidgetsBinding.instance.platformDispatcher.platformBrightness;
-
-    String appTheme = brightness == Brightness.dark ? "dark" : "light";
-    // Delay a little to make sure JS is ready
-    await sendEpubBase64Chunked(
-      widget.epubFile,
-      _controller,
-      scrollPosition.toString(),
-      appTheme,
-    );
   }
 
   Future<void> sendEpubBase64Chunked(
@@ -123,18 +134,16 @@ class _EpubWebViewPageState extends State<EpubWebViewPage> {
     final b64 = base64Encode(bytes);
 
     await controller.runJavaScript(
-      "window.epubRxStart(${jsonEncode(scrollPosition)}, ${jsonEncode(appTheme)});",
+      "epubRxStart(${jsonEncode(scrollPosition)}, ${jsonEncode(appTheme)});",
     );
 
     for (int i = 0; i < b64.length; i += chunkSize) {
       final end = (i + chunkSize < b64.length) ? i + chunkSize : b64.length;
       final chunk = b64.substring(i, end);
-      await controller.runJavaScript(
-        "window.epubRxChunk(${jsonEncode(chunk)});",
-      );
+      await controller.runJavaScript("epubRxChunk(${jsonEncode(chunk)});");
     }
 
-    await controller.runJavaScript("window.epubRxEnd();");
+    await controller.runJavaScript("epubRxEnd();");
   }
 
   @override
@@ -174,7 +183,7 @@ class _EpubWebViewPageState extends State<EpubWebViewPage> {
                       // Title
                       Expanded(
                         child: Text(
-                          widget.bookMeta.title ?? "Title",
+                          widget.book.meta.title ?? "Title",
                           style: TextStyle(
                             color: colors.onSecondary,
                             fontSize: 16,

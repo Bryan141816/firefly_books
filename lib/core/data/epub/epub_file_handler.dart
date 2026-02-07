@@ -9,7 +9,7 @@ class EpubFileHandler {
   // Single instance
   static final EpubFileHandler _instance = EpubFileHandler._internal();
 
-  List<EpubBook>? _books = null;
+  List<EpubBook>? _books;
 
   // Factory constructor always returns the same instance
   factory EpubFileHandler() {

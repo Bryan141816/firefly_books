@@ -27,8 +27,8 @@ class _BookGridState extends State<BookGrid> {
             itemCount: _books.length,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
               childAspectRatio: 2 / 3,
             ),
             itemBuilder: (context, index) {
@@ -38,12 +38,10 @@ class _BookGridState extends State<BookGrid> {
               final image = book.images!;
               return GestureDetector(
                 onTap: () {
-                  final epubFile = book.epubFile;
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          BookDetailedView(book: book, epubFile: epubFile),
+                      builder: (context) => BookDetailedView(book: book),
                     ),
                   );
                 },

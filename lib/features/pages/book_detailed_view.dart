@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:firefly_books/core/data/local/db_handler.dart';
 import 'package:firefly_books/core/models/book.dart';
 import 'package:firefly_books/features/components/expandable_fading_text.dart';
@@ -9,12 +7,8 @@ import 'package:flutter/material.dart';
 
 class BookDetailedView extends StatefulWidget {
   final EpubBook book;
-  final Uint8List epubFile;
-  const BookDetailedView({
-    super.key,
-    required this.book,
-    required this.epubFile,
-  });
+
+  const BookDetailedView({super.key, required this.book});
 
   @override
   State<StatefulWidget> createState() => _BookDetailedView();
@@ -75,7 +69,7 @@ class _BookDetailedView extends State<BookDetailedView> {
                     colors.surface,
                     colors.surface.withValues(alpha: 0.9),
                   ],
-                  stops: const [0.75, 1],
+                  stops: const [0.6, 1],
                 ),
               ),
             ),
@@ -145,10 +139,8 @@ class _BookDetailedView extends State<BookDetailedView> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => EpubWebViewPage(
-                                bookMeta: widget.book.meta,
-                                epubFile: widget.epubFile,
-                              ),
+                              builder: (context) =>
+                                  EpubWebViewPage(book: widget.book),
                             ),
                           );
                         },

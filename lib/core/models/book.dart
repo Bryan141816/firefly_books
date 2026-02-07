@@ -29,6 +29,6 @@ class EpubMeta {
 class EpubBook {
   final EpubMeta meta;
   final Uint8List? images;
-  final Uint8List epubFile;
-  EpubBook({required this.meta, required this.images, required this.epubFile});
+  String? epubPath;
+  EpubBook({required this.meta, required this.images, this.epubPath});
 }

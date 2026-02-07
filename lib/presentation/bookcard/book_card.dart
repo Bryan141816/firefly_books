@@ -29,8 +29,8 @@ class BookCard extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.bottomCenter,
                 end: Alignment.topCenter,
-                colors: [Colors.black87, Colors.transparent],
-                stops: [0.0, 0.3],
+                colors: [Color(0xcc000000), Colors.transparent],
+                stops: [0.0, 0.5],
               ),
             ),
           ),

@@ -27,14 +27,10 @@ class _AppState extends State<App> {
     PageItem(page: _ProfilePage(), title: 'Profile'),
   ];
 
-  // Floating bar sizing
   static const double _barHeight = 64;
-  static const double _barMargin = 16;
 
   @override
   Widget build(BuildContext context) {
-    final double bottomPad = _barHeight + (_barMargin * 2) + 8;
-
     final currentPage = _pages[_index];
 
     return Scaffold(
@@ -42,21 +38,13 @@ class _AppState extends State<App> {
       body: Stack(
         children: [
           // Page content: reserve space so it won't get covered by the floating bar
-          Padding(
-            padding: EdgeInsets.only(
-              top: 20,
-              left: 20,
-              right: 20,
-              bottom: bottomPad,
-            ),
-            child: currentPage.page,
-          ),
+          Padding(padding: EdgeInsets.all(20), child: currentPage.page),
 
           // Floating bottom navigation
           Positioned(
-            left: _barMargin,
-            right: _barMargin,
-            bottom: _barMargin,
+            left: 0,
+            right: 0,
+            bottom: 0,
             child: SafeArea(
               top: false,
               child: FloatingBottomNavBar(
