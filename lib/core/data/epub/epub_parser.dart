@@ -29,11 +29,19 @@ class EpubParser {
         .findAllElements('description', namespace: dcNs)
         .firstWhereOrNull((_) => true)
         ?.innerText;
+    final coverId = document
+        .findAllElements('meta')
+        .firstWhereOrNull(
+          (e) => e.getAttribute('name')?.contains('cover') ?? false,
+        )
+        ?.getAttribute('content');
 
     final coverItem = document
         .findAllElements('item')
         .firstWhereOrNull(
-          (e) => e.getAttribute('properties')?.contains('cover-image') ?? false,
+          (e) =>
+              coverId != null &&
+              e.getAttribute('id')?.contains(coverId) == true,
         );
 
     final coverImageHref = coverItem?.getAttribute('href');
