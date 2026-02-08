@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PrefsService {
@@ -38,12 +39,30 @@ class PrefsService {
   // App-specific shortcuts
   // -----------------------------
   static const _booksDirectoryKey = 'booksDirectory';
+  static const _themeMode = 'theme_mode';
   static const _setupCompleteKey = 'setupComplete';
 
   String get booksDirectory => _prefs.getString(_booksDirectoryKey) ?? "";
 
   Future<void> setBooksDirectory(String value) =>
       _prefs.setString(_booksDirectoryKey, value);
+  ThemeMode get themeMode {
+    final value = _prefs.getString(_themeMode);
+
+    switch (value) {
+      case 'light':
+        return ThemeMode.light;
+      case 'dark':
+        return ThemeMode.dark;
+      case 'system':
+      default:
+        return ThemeMode.system;
+    }
+  }
+
+  Future<void> setTheme(ThemeMode theme) async {
+    await _prefs.setString(_themeMode, theme.name);
+  }
 
   bool get setupComplete => _prefs.getBool(_setupCompleteKey) ?? false;
 

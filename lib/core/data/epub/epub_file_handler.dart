@@ -11,6 +11,8 @@ class EpubFileHandler {
 
   List<EpubBook>? _books;
 
+  late String lastPathRead;
+
   // Factory constructor always returns the same instance
   factory EpubFileHandler() {
     return _instance;

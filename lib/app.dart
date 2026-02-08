@@ -1,5 +1,6 @@
 import 'package:firefly_books/features/screens/favorites_screen.dart';
 import 'package:firefly_books/features/screens/library_screen.dart';
+import 'package:firefly_books/features/screens/settings_screen.dart';
 import 'package:firefly_books/presentation/navbar/floating_nav_bar.dart';
 import 'package:flutter/material.dart';
 
@@ -23,8 +24,7 @@ class _AppState extends State<App> {
   final List<PageItem> _pages = const [
     PageItem(page: LibraryScreen(), title: 'Library'),
     PageItem(page: FavoriteScreen(), title: 'Favorites'),
-    PageItem(page: _SearchPage(), title: 'Search'),
-    PageItem(page: _ProfilePage(), title: 'Profile'),
+    PageItem(page: SettingsScreen(), title: 'Settings'),
   ];
 
   static const double _barHeight = 64;
@@ -57,23 +57,5 @@ class _AppState extends State<App> {
         ],
       ),
     );
-  }
-}
-
-class _SearchPage extends StatelessWidget {
-  const _SearchPage();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text("Search"));
-  }
-}
-
-class _ProfilePage extends StatelessWidget {
-  const _ProfilePage();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text("Profile"));
   }
 }
