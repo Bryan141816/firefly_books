@@ -130,9 +130,8 @@ class _SettingsCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
       decoration: BoxDecoration(
-        color: cs.surface,
+        color: cs.secondary,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: cs.onSurface),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

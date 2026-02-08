@@ -7,12 +7,12 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme(
-        primary: Color(0xFF84a8f0),
+        primary: Color.fromARGB(255, 84, 135, 238),
         onPrimary: Colors.black,
-        secondary: Color(0xFFE0E4EB),
+        secondary: Color.fromARGB(255, 189, 200, 219),
         onSecondary: Colors.black,
         error: Colors.red,
-        onError: Colors.white,
+        onError: Color(0xFFE0E0E0),
         surface: Color(0xFFF0F1F5),
         onSurface: Colors.black,
         brightness: Brightness.light,

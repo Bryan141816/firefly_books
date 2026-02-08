@@ -54,9 +54,10 @@ class _BookDetailedView extends State<BookDetailedView> {
       body: Stack(
         children: [
           // Background
-          Positioned.fill(
-            child: Image.memory(widget.book.images!, fit: BoxFit.cover),
-          ),
+          if (widget.book.images != null)
+            Positioned.fill(
+              child: Image.memory(widget.book.images!, fit: BoxFit.cover),
+            ),
 
           // Gradient overlay
           Positioned.fill(
@@ -92,11 +93,22 @@ class _BookDetailedView extends State<BookDetailedView> {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.memory(
-                          widget.book.images!,
-                          fit: BoxFit.cover,
-                          height: double.infinity,
-                        ),
+                        child: widget.book.images != null
+                            ? Image.memory(
+                                widget.book.images!,
+                                fit: BoxFit.cover,
+                                height: double.infinity,
+                              )
+                            : AspectRatio(
+                                aspectRatio: 2 / 3,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Center(child: Text("No Cover Image")),
+                                ),
+                              ),
                       ),
                       const SizedBox(width: 30),
                       Expanded(
